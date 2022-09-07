@@ -1,4 +1,7 @@
 from types import SimpleNamespace
+
+import torch
+
 from mvit_model import MViT
 
 if __name__ == "__main__":
@@ -69,3 +72,6 @@ if __name__ == "__main__":
     cfg = SimpleNamespace(**cfg)
 
     model = MViT(cfg)
+    shape = (2, 3, 1, cfg_data.TRAIN_CROP_SIZE, cfg_data.TRAIN_CROP_SIZE)
+    x = torch.randn(shape)
+    y = model(x)
