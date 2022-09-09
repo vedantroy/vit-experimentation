@@ -174,6 +174,32 @@ class MultiScaleAttention(nn.Module):
         separate_qkv=False,
     ):
         super().__init__()
+        # print(f"dim={dim}")
+        # print(f"dim_out={dim_out}")
+        # print(f"input_size={input_size}")
+        # print(f"num_heads={num_heads}")
+        # print(f"qkv_bias={qkv_bias}")
+        # print(f"drop_rate={drop_rate}")
+        # print(f"kernel_q={kernel_q}")
+        # print(f"kernel_kv={kernel_kv}")
+        # print(f"stride_q={stride_q}")
+        # print(f"stride_kv={stride_kv}")
+        # print(f"norm_layer={norm_layer}")
+        # print(f"has_cls_embed={has_cls_embed}")
+        # print(f"mode={mode}")
+        # print(f"pool_first={pool_first}")
+        # print(f"rel_pos_spatial={rel_pos_spatial}")
+        # print(f"rel_pos_temporal={rel_pos_temporal}")
+        # print(f"rel_pos_zero_init={rel_pos_zero_init}")
+        # print(f"residual_pooling={residual_pooling}")
+        # print(f"separate_qkv={separate_qkv}")
+
+        # from random import randint
+        # selfid = randint(5, 5000)
+        # print(f"selfid={selfid}")
+        # self.selfid = selfid
+        # print("<<<<<\n\n")
+
         self.pool_first = pool_first
         self.separate_qkv = separate_qkv
         self.drop_rate = drop_rate
@@ -285,7 +311,6 @@ class MultiScaleAttention(nn.Module):
                 trunc_normal_(self.rel_pos_h, std=0.02)
                 trunc_normal_(self.rel_pos_w, std=0.02)
         if self.rel_pos_temporal:
-            print(2 * input_size[0])
             self.rel_pos_t = nn.Parameter(torch.zeros(2 * input_size[0] - 1, head_dim))
             if not rel_pos_zero_init:
                 trunc_normal_(self.rel_pos_t, std=0.02)
@@ -293,6 +318,10 @@ class MultiScaleAttention(nn.Module):
         self.residual_pooling = residual_pooling
 
     def forward(self, x, thw_shape):
+        # print(self.selfid)
+        # print(x.shape)
+        # print(x.dtype)
+        # print(thw_shape)
         B, N, _ = x.shape
 
         if self.pool_first:

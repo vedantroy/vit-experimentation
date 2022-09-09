@@ -301,6 +301,7 @@ class PatchEmbed(nn.Module):
         conv_2d=False,
     ):
         super().__init__()
+        self.dim_out = dim_out
         if conv_2d:
             conv = nn.Conv2d
         else:
@@ -314,8 +315,14 @@ class PatchEmbed(nn.Module):
         )
 
     def forward(self, x, keep_spatial=False):
+        old_shape = x.shape
         x = self.proj(x)
+        assert len(old_shape) == len(x.shape)
+
         if keep_spatial:
             return x, x.shape
+        
         # B C (T) H W -> B (T)HW C
+        # 2 is the start dim of the flattening
+        # Explanation: Smash T,H,W dims together then move channels last
         return x.flatten(2).transpose(1, 2), x.shape
