@@ -5,6 +5,12 @@ from torch.nn.init import normal_, xavier_normal_, ones_, uniform_, orthogonal_,
 from torch import testing
 
 from attention import MultiScaleAttention
+from my_attention import MultiScaleAttention as MyMultiScaleAttention
+
+def assert_shape(x, shape):
+    actual = tuple(x.shape)
+    if actual != shape:
+        raise ValueError(f"{actual} != {shape}")
 
 torch.use_deterministic_algorithms(mode=True) 
 
@@ -57,16 +63,30 @@ def multi_scale_attn():
     T, H, W = 8, 56, 56
     thw_shape = [T, H, W]
 
-    # +1 for the class emebedding
+    # Ensure the deterministic init works
+    # +1 for the class embedding
     x = torch.rand((1, T * H * W + 1, args["dim"])).to(dtype=torch.float32)
-    y1 = attn1(x.clone(), thw_shape=thw_shape)
-    y2 = attn2(x.clone(), thw_shape=thw_shape)
-
+    with torch.no_grad():
+        y1 = attn1(x.clone(), thw_shape=thw_shape)
+        y2 = attn2(x.clone(), thw_shape=thw_shape)
     testing.assert_close(y1, y2)
+    print("deterministic init passed")
 
-	# 2426
-	# torch.Size([1, 25089, 96])
-	# torch.float32
-	# [8, 56, 56]
+    my_attn = MyMultiScaleAttention(**args)
+    deterministic_init(my_attn)
+
+    # Ensure qkv works
+    with torch.no_grad():
+        actual_dbg = {}
+        attn1(x.clone(), thw_shape=thw_shape, dbg=actual_dbg)
+        my_dbg = {}
+        my_attn(x.clone(), thw_shape=thw_shape, dbg=my_dbg)
+
+        actual_qkv = actual_dbg["qkv"]
+        my_qkv = my_dbg["qkv"]
+        assert_shape(actual_qkv, my_qkv.shape)
+        print("qkv shape passed")
+        testing.assert_close(my_qkv, actual_qkv)
+        print("qkv match passed")
 
 multi_scale_attn()

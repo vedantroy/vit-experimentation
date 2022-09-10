@@ -12,6 +12,13 @@ from common import DropPath, Mlp
 
 
 def attention_pool(tensor, pool, thw_shape, has_cls_embed=True, norm=None):
+    # print("ATTN POOL")
+    # print(tensor.shape)
+    # print(type(pool))
+    # print(thw_shape)
+    # print(has_cls_embed)
+    # print(norm)
+
     if pool is None:
         return tensor, thw_shape
     tensor_dim = tensor.ndim
@@ -317,7 +324,9 @@ class MultiScaleAttention(nn.Module):
 
         self.residual_pooling = residual_pooling
 
-    def forward(self, x, thw_shape):
+    def forward(self, x, thw_shape, dbg=None):
+        if dbg == None:
+            dbg = {}
         # print(self.selfid)
         # print(x.shape)
         # print(x.dtype)
@@ -332,13 +341,16 @@ class MultiScaleAttention(nn.Module):
             x = x.reshape(B, N, fold_dim, -1).permute(0, 2, 1, 3)
             q = k = v = x
         else:
+            print("HERE ...")
             assert self.mode != "conv_unshared"
             if not self.separate_qkv:
+                print("IN HERE ...")
                 qkv = (
                     self.qkv(x)
                     .reshape(B, N, 3, self.num_heads, -1)
                     .permute(2, 0, 3, 1, 4)
                 )
+                dbg["qkv"] = qkv
                 q, k, v = qkv[0], qkv[1], qkv[2]
             else:
                 q = k = v = x
