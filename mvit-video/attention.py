@@ -11,7 +11,9 @@ from torch.nn.init import trunc_normal_
 from common import DropPath, Mlp
 
 
-def attention_pool(tensor, pool, thw_shape, has_cls_embed=True, norm=None):
+def attention_pool(tensor, pool, thw_shape, has_cls_embed=True, norm=None, dbg=None):
+    if dbg is None:
+        dbg = {}
     # print("ATTN POOL")
     # print(tensor.shape)
     # print(type(pool))
@@ -33,8 +35,10 @@ def attention_pool(tensor, pool, thw_shape, has_cls_embed=True, norm=None):
         cls_tok, tensor = tensor[:, :, :1, :], tensor[:, :, 1:, :]
 
     B, N, L, C = tensor.shape
+    print(f"#heads={N}")
     T, H, W = thw_shape
     tensor = tensor.reshape(B * N, T, H, W, C).permute(0, 4, 1, 2, 3).contiguous()
+    dbg["q_pre_pool"] = tensor.clone()
 
     tensor = pool(tensor)
 
@@ -364,6 +368,7 @@ class MultiScaleAttention(nn.Module):
             thw_shape,
             has_cls_embed=self.has_cls_embed,
             norm=self.norm_q if hasattr(self, "norm_q") else None,
+            dbg=dbg,
         )
         k, k_shape = attention_pool(
             k,

@@ -89,4 +89,9 @@ def multi_scale_attn():
         testing.assert_close(my_qkv, actual_qkv)
         print("qkv match passed")
 
+        actual_q_pre_pool = actual_dbg["q_pre_pool"]
+        my_q_pre_pool = my_dbg["q_pre_pool"]
+        testing.assert_close(actual_q_pre_pool, my_q_pre_pool)
+        print("q_pre_pool passed")
+
 multi_scale_attn()
