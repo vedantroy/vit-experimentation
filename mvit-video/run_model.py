@@ -105,14 +105,12 @@ def config():
             NORM="layernorm",
             NORM_STEM=False,
             NUM_HEADS=1,
-
             # These are the parameters for the convolution that runs
             # on the input to turn it into an embedding
             PATCH_2D=False,
             PATCH_KERNEL=[3, 7, 7],
             PATCH_PADDING=[1, 3, 3],
             PATCH_STRIDE=[2, 4, 4],
-
             POOL_FIRST=False,
             POOL_KVQ_KERNEL=[3, 3, 3],
             POOL_KV_STRIDE=[],

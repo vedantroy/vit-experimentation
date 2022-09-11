@@ -1,18 +1,29 @@
 import torch
 from torch import nn
+
 # from torch.nn.init import trunc_normal_
-from torch.nn.init import normal_, xavier_normal_, ones_, uniform_, orthogonal_, constant_
+from torch.nn.init import (
+    normal_,
+    xavier_normal_,
+    ones_,
+    uniform_,
+    orthogonal_,
+    constant_,
+)
 from torch import testing
 
 from attention import MultiScaleAttention
 from my_attention import MultiScaleAttention as MyMultiScaleAttention
+
 
 def assert_shape(x, shape):
     actual = tuple(x.shape)
     if actual != shape:
         raise ValueError(f"{actual} != {shape}")
 
-torch.use_deterministic_algorithms(mode=True) 
+
+torch.use_deterministic_algorithms(mode=True)
+
 
 def deterministic_fill_(p):
     gen = torch.Generator()
@@ -22,12 +33,14 @@ def deterministic_fill_(p):
     weights = torch.rand(shape, generator=gen)
     p.data = weights
 
+
 def deterministic_init(m):
     params = 0
     for n, p in m.named_parameters():
         deterministic_fill_(p)
         params += 1
     print(f"{params} params deterministically initialized")
+
 
 def model_args():
     args = dict(
@@ -51,6 +64,7 @@ def model_args():
         separate_qkv=False,
     )
     return args
+
 
 def multi_scale_attn():
     args = model_args()
@@ -77,6 +91,7 @@ def multi_scale_attn():
 
     # Ensure qkv works
     with torch.no_grad():
+        print("Starting tests ...")
         actual_dbg = {}
         attn1(x.clone(), thw_shape=thw_shape, dbg=actual_dbg)
         my_dbg = {}
@@ -93,5 +108,16 @@ def multi_scale_attn():
         my_q_pre_pool = my_dbg["q_pre_pool"]
         testing.assert_close(actual_q_pre_pool, my_q_pre_pool)
         print("q_pre_pool passed")
+
+        actual_q = actual_dbg["q"]
+        my_q = my_dbg["q"]
+        testing.assert_close(actual_q, my_q)
+        print("pooled_q passed")
+
+        actual_attn_matrix = actual_dbg["attn"]
+        my_attn_matrix = my_dbg["attn"]
+        testing.assert_close(actual_attn_matrix, my_attn_matrix)
+        print("pooled_q passed")
+
 
 multi_scale_attn()

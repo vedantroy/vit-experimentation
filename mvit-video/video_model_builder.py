@@ -509,7 +509,6 @@ class MViT(nn.Module):
             ),
         )
 
-
         # bcthw is the shape after projection
         # & before flattening
         x, bcthw = self.patch_embed(x)

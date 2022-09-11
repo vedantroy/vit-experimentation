@@ -35,12 +35,14 @@ def attention_pool(tensor, pool, thw_shape, has_cls_embed=True, norm=None, dbg=N
         cls_tok, tensor = tensor[:, :, :1, :], tensor[:, :, 1:, :]
 
     B, N, L, C = tensor.shape
-    print(f"#heads={N}")
+    # print(f"#heads={N}")
     T, H, W = thw_shape
     tensor = tensor.reshape(B * N, T, H, W, C).permute(0, 4, 1, 2, 3).contiguous()
     dbg["q_pre_pool"] = tensor.clone()
 
+    # print(f"Before shape: {tensor.shape}")
     tensor = pool(tensor)
+    # print(f"After shape: {tensor.shape}")
 
     thw_shape = [tensor.shape[2], tensor.shape[3], tensor.shape[4]]
     L_pooled = tensor.shape[2] * tensor.shape[3] * tensor.shape[4]
@@ -262,6 +264,7 @@ class MultiScaleAttention(nn.Module):
                 dim_conv = dim // num_heads if mode == "conv" else dim
             else:
                 dim_conv = dim_out // num_heads if mode == "conv" else dim_out
+
             self.pool_q = (
                 nn.Conv3d(
                     dim_conv,
@@ -345,10 +348,10 @@ class MultiScaleAttention(nn.Module):
             x = x.reshape(B, N, fold_dim, -1).permute(0, 2, 1, 3)
             q = k = v = x
         else:
-            print("HERE ...")
+            # print("HERE ...")
             assert self.mode != "conv_unshared"
             if not self.separate_qkv:
-                print("IN HERE ...")
+                # print("IN HERE ...")
                 qkv = (
                     self.qkv(x)
                     .reshape(B, N, 3, self.num_heads, -1)
@@ -370,6 +373,7 @@ class MultiScaleAttention(nn.Module):
             norm=self.norm_q if hasattr(self, "norm_q") else None,
             dbg=dbg,
         )
+        dbg["q"] = q
         k, k_shape = attention_pool(
             k,
             self.pool_k,
@@ -401,6 +405,7 @@ class MultiScaleAttention(nn.Module):
 
         N = q.shape[2]
         attn = (q * self.scale) @ k.transpose(-2, -1)
+        dbg["attn"] = attn.clone()
         if self.rel_pos_spatial:
             attn = cal_rel_pos_spatial(
                 attn,

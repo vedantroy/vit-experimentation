@@ -321,7 +321,7 @@ class PatchEmbed(nn.Module):
 
         if keep_spatial:
             return x, x.shape
-        
+
         # B C (T) H W -> B (T)HW C
         # 2 is the start dim of the flattening
         # Explanation: Smash T,H,W dims together then move channels last
