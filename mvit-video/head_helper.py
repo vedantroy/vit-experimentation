@@ -6,7 +6,7 @@
 from functools import partial
 import torch
 import torch.nn as nn
-from detectron2.layers import ROIAlign
+# from detectron2.layers import ROIAlign
 
 # from utils import logging
 from attention import MultiScaleBlock

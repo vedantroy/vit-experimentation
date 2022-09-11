@@ -117,7 +117,7 @@ def multi_scale_attn():
         actual_attn_matrix = actual_dbg["attn"]
         my_attn_matrix = my_dbg["attn"]
         testing.assert_close(actual_attn_matrix, my_attn_matrix)
-        print("pooled_q passed")
+        print("attention matrix passed")
 
 
 multi_scale_attn()

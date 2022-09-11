@@ -493,21 +493,22 @@ class MViT(nn.Module):
 
         return x
 
-    def forward(self, x, bboxes=None, return_attn=False):
+    def forward(self, x, bboxes=None, return_attn=False, do_assert=True):
         # TODO: Not sure why we only take the 1st item
         # Seems fine though b/c b is probably the batch dimension
         x = x[0]
 
-        assert_shape(
-            x,
-            (
-                1,  # batch dimension
-                3,
-                self.cfg.DATA.NUM_FRAMES,
-                self.cfg.DATA.TRAIN_CROP_SIZE,
-                self.cfg.DATA.TRAIN_CROP_SIZE,
-            ),
-        )
+        if do_assert:
+            assert_shape(
+                x,
+                (
+                    1,  # batch dimension
+                    3,
+                    self.cfg.DATA.NUM_FRAMES,
+                    self.cfg.DATA.TRAIN_CROP_SIZE,
+                    self.cfg.DATA.TRAIN_CROP_SIZE,
+                ),
+            )
 
         # bcthw is the shape after projection
         # & before flattening
@@ -516,18 +517,22 @@ class MViT(nn.Module):
         bcthw = list(bcthw)
 
         T, H, W = bcthw[-3], bcthw[-2], bcthw[-1]
-        assert bcthw[1] == self.cfg.MVIT.EMBED_DIM
-        assert len(bcthw) == 5 and (T, H, W) == (self.T, self.H, self.W), bcthw
+        if do_assert:
+            assert bcthw[1] == self.cfg.MVIT.EMBED_DIM
+            assert len(bcthw) == 5 and (T, H, W) == (self.T, self.H, self.W), bcthw
         # channels last
         B, N, C = x.shape
-        assert C == self.cfg.MVIT.EMBED_DIM
-        assert N == T * H * W
+        if do_assert:
+            assert C == self.cfg.MVIT.EMBED_DIM
+            assert N == T * H * W
 
         s = 1 if self.cls_embed_on else 0
-        assert not self.use_fixed_sincos_pos
+        if do_assert:
+            assert not self.use_fixed_sincos_pos
 
         # cls embed on
-        assert_shape(self.cls_token, (1, 1, self.cfg.MVIT.EMBED_DIM))
+        if do_assert:
+            assert_shape(self.cls_token, (1, 1, self.cfg.MVIT.EMBED_DIM))
         cls_tokens = self.cls_token.expand(
             B, -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
