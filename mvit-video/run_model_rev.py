@@ -460,6 +460,9 @@ def main():
     y = model(x)
     print("Model finished running !")
     print(y.shape)
+    # y.backward()
+    y.sum().backward()
+    print("backprop finished")
 
 
 if __name__ == "__main__":
