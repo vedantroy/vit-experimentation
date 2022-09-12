@@ -11,6 +11,7 @@ from einops.layers.torch import Rearrange
 # Lacking:
 # - Stochastic Depth (for now)
 # - Dropout (never used)
+# - Positional Embeddings (adding now)
 
 def norm(dim: int):
     return nn.LayerNorm(dim, eps=1e-6, elementwise_affine=True)
@@ -317,6 +318,16 @@ class ReversibleVIT(nn.Module):
             model_dim % 2 == 0
         ), f"model_dim must be divisible by 2 for reversible ViT"
         self.patchify = patch_embed(model_dim // 2, cfg.patch_size, img_size)
+        num_patches = (img_size // cfg.patch_size) ** 2
+        self.pos_embed = nn.Parameter(
+		torch.zeros(
+			1,
+			num_patches,
+			model_dim // 2,
+		)
+	)
+	# Initialization taken from PySlowFast
+        nn.init.trunc_normal_(self.pos_embed, std=0.02)
         self.blocks = nn.ModuleList([])
         for _ in range(depth):
             block = ReversibleBlock(
@@ -330,6 +341,7 @@ class ReversibleVIT(nn.Module):
 
     def forward(self, x):
         patches = self.patchify(x)
+        patches += self.pos_embed
 
         concat = torch.cat([patches, patches], dim=-1)
         concat = RevBackProp.apply(concat, self.blocks)
