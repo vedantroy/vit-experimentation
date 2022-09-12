@@ -11,7 +11,6 @@ from einops.layers.torch import Rearrange
 # Lacking:
 # - Stochastic Depth (for now)
 # - Dropout (never used)
-# - Positional Embeddings (adding now)
 
 def norm(dim: int):
     return nn.LayerNorm(dim, eps=1e-6, elementwise_affine=True)
