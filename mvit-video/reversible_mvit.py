@@ -208,9 +208,11 @@ class RevBackProp(Function):
             X_1, X_2 = layer(X_1, X_2)
 
             if layer.layer_id in buffer_layers:
+                print("BUFFER LAYER")
                 intermediate.extend([X_1.detach(), X_2.detach()])
 
         if len(buffer_layers) == 0:
+            print("NO BUFFER LAYERS")
             all_tensors = [X_1.detach(), X_2.detach()]
         else:
             intermediate = [torch.LongTensor(buffer_layers), *intermediate]
@@ -229,6 +231,8 @@ class RevBackProp(Function):
         activation recomputation and grad calculation).
         """
         dX_1, dX_2 = torch.chunk(dx, 2, dim=-1)
+        assert dX_1.shape == dX_2.shape
+        print(f"dX_1.shape: {dX_1.shape}")
 
         # retrieve params from ctx for backward
         X_1, X_2, *int_tensors = ctx.saved_tensors
@@ -238,6 +242,7 @@ class RevBackProp(Function):
             buffer_layers = int_tensors[0].tolist()
 
         else:
+            print("NO BUF LAYERS")
             buffer_layers = []
 
         layers = ctx.layers
@@ -263,6 +268,7 @@ class RevBackProp(Function):
                 )
 
         dx = torch.cat([dX_1, dX_2], dim=-1)
+        print(f"input derivative shape: {dx.shape}")
 
         del int_tensors
         del dX_1, dX_2, X_1, X_2
@@ -351,6 +357,7 @@ class StageTransitionBlock(nn.Module):
 
         # Add a linear projection in residual branch
         if embed_dim != dim_out:
+            print("ADDING PROJECTION ....")
             self.is_proj = True
             self.res_proj = nn.Linear(embed_dim, dim_out, bias=True)
 
@@ -506,6 +513,8 @@ class ReversibleBlock(nn.Module):
         self.seed_cuda("attn")
         # Y_1 : attn_output
         f_X_2 = self.F(X_2)
+	# only true for VITs (I think ???)
+        assert f_X_2.shape == X_2.shape
 
         self.seed_cuda("droppath")
         f_X_2_dropped = drop_path(
@@ -554,6 +563,7 @@ class ReversibleBlock(nn.Module):
 
             torch.manual_seed(self.seeds["FFN"])
             g_Y_1 = self.G(Y_1)
+            assert g_Y_1.shape == Y_1.shape
 
             torch.manual_seed(self.seeds["droppath"])
             g_Y_1 = drop_path(
@@ -570,7 +580,9 @@ class ReversibleBlock(nn.Module):
             del g_Y_1
 
             dY_1 = dY_1 + Y_1.grad
+            print(f"Y1 requires_grad: {Y_1.requires_grad}")
             Y_1.grad = None
+            print(f"Y1 requires_grad 2: {Y_1.requires_grad}")
 
         # record F activations and calc gradients on F
         with torch.enable_grad():
@@ -586,11 +598,16 @@ class ReversibleBlock(nn.Module):
 
             f_X_2.backward(dY_1, retain_graph=True)
 
+        # X_1 = Y_1 - f_X_2
+        # print(f"{X_1.requires_grad}")
+
         # propagate reverse computed acitvations at the start of
         # the previou block for backprop.s
         with torch.no_grad():
 
+            print(f"rgrad: {Y_1.requires_grad}, {f_X_2.requires_grad}")
             X_1 = Y_1 - f_X_2
+            print(f"X_1 rgrad: {X_1.requires_grad}")
 
             del f_X_2, Y_1
             dY_2 = dY_2 + X_2.grad
@@ -598,6 +615,7 @@ class ReversibleBlock(nn.Module):
             X_2.grad = None
             X_2 = X_2.detach()
 
+        print(f"{X_1.requires_grad}, {X_2.requires_grad}")
         return X_1, X_2, dY_1, dY_2
 
 
@@ -681,5 +699,6 @@ class AttentionSubBlock(nn.Module):
         )
 
     def forward(self, x):
+        print(f"Attn input shape: {x.shape}")
         out, _ = self.attn(self.norm(x), self.thw)
         return out

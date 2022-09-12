@@ -57,10 +57,18 @@ class Attention(nn.Module):
         ) if project_out else nn.Identity()
 
     def forward(self, x):
+        print(f"Attn shape: {x.shape}")
+        b, n_patches, dim = x.shape
         qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+        q, k, v = qkv
+        assert q.shape == x.shape
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), [q, k, v])
+	# I finally get it:
+	# Each token is now a patch; thus, attention between patches
+        assert q.shape == (b, self.heads, n_patches, dim // self.heads)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+        print(f"attn matrix: {dots.shape}")
 
         attn = self.attend(dots)
         attn = self.dropout(attn)

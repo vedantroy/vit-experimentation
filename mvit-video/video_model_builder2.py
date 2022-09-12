@@ -1183,9 +1183,12 @@ class MViT(nn.Module):
             x = x.mean(1)
             x = self.norm(x)
         else:
+            print(f"before norm dims: {x.shape}")
             x = self.norm(x)
             x = self.fuse(x)
+            print(f"after fuse dims: {x.shape}")
             x = x.mean(1)
+            print(f"after mean dims: {x.shape}")
 
         x = self.head(x)
 
