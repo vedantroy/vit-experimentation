@@ -9,6 +9,7 @@ from einops import rearrange
 # - Stochastic Depth (for now)
 # - Dropout (never used)
 
+
 def norm(dim: int):
     return nn.LayerNorm(dim, eps=1e-6, elementwise_affine=True)
 
@@ -42,8 +43,8 @@ class Attention(nn.Module):
         super().__init__()
         self.heads = heads
         head_dim = dim // heads
-	# TODO: The original paper says sqrt(d_k)
-	# but FBAI + lucidrains do something else
+        # TODO: The original paper says sqrt(d_k)
+        # but FBAI + lucidrains do something else
         self.scale = head_dim ** -0.5
 
         self.to_probabilities = nn.Softmax(dim=-1)
@@ -53,12 +54,9 @@ class Attention(nn.Module):
         b, n_patches, dim = x.shape
         qkv = self.to_qkv(x).chunk(3, dim=-1)
 
-        q, k, v = qkv
-        assert q.shape == x.shape
+        assert qkv[0].shape == x.shape
 
-        q, k, v = map(
-            lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), [q, k, v]
-        )
+        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         assert q.shape == (b, self.heads, n_patches, dim // self.heads)
 
@@ -288,6 +286,7 @@ def patch_embed(dim_out: int, patch_size: int, img_size: int):
         padding=(0, 0),
     )
 
+
 class ReversibleViTParams(hp.Hparams):
     depth: int = hp.required("# of transformer blocks")
     model_dim: int = hp.required("width of internal representation")
@@ -300,7 +299,9 @@ class ReversibleBackbone(nn.Module):
         super().__init__()
 
         depth, model_dim, heads = cfg.depth, cfg.model_dim, cfg.heads
-        assert model_dim % 2 == 0, f"model_dim must be divisible by 2 for reversible ViT"
+        assert (
+            model_dim % 2 == 0
+        ), f"model_dim must be divisible by 2 for reversible ViT"
         self.patchify = patch_embed(model_dim // 2, cfg.patch_size, img_size)
         self.blocks = nn.ModuleList([])
         for _ in range(depth):
@@ -326,4 +327,4 @@ class ReversibleBackbone(nn.Module):
 
 
 if __name__ == "__main__":
-	pass
+    pass
