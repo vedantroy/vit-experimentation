@@ -1,3 +1,4 @@
+import yahp as hp
 import torch
 from torch import nn
 from torch.autograd import Function as Function
@@ -7,7 +8,6 @@ from einops import rearrange
 # Lacking:
 # - Stochastic Depth (for now)
 # - Dropout (never used)
-
 
 def norm(dim: int):
     return nn.LayerNorm(dim, eps=1e-6, elementwise_affine=True)
@@ -288,24 +288,30 @@ def patch_embed(dim_out: int, patch_size: int, img_size: int):
         padding=(0, 0),
     )
 
+class ReversibleViTParams(hp.Hparams):
+    depth: int = hp.required("# of transformer blocks")
+    model_dim: int = hp.required("width of internal representation")
+    heads: int = hp.required("# of attention of heads")
+    patch_size: int = hp.required("width/height of patch")
+
 
 class ReversibleBackbone(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, img_size: int):
         super().__init__()
 
-        depth, embed_dim, heads = cfg.vit.depth, cfg.vit.embed_dim, cfg.vit.heads
-        assert embed_dim % 2 == 0, f"embed_dim must be divisible by 2 for reversible ViT"
-        self.patchify = patch_embed(embed_dim // 2, cfg.patch_size, cfg.data.img_size)
+        depth, model_dim, heads = cfg.depth, cfg.model_dim, cfg.heads
+        assert model_dim % 2 == 0, f"model_dim must be divisible by 2 for reversible ViT"
+        self.patchify = patch_embed(model_dim // 2, cfg.patch_size, img_size)
         self.blocks = nn.ModuleList([])
         for _ in range(depth):
             block = ReversibleBlock(
-                dim=embed_dim,
+                dim=model_dim,
                 heads=heads,
                 mlp_ratio=cfg.mlp_ratio,
                 drop_path_rate=None,
             )
             self.blocks.append(block)
-        self.norm = norm(embed_dim)
+        self.norm = norm(model_dim)
 
     def forward(self, x):
         patches = self.patchify(x)
@@ -317,3 +323,7 @@ class ReversibleBackbone(nn.Module):
         concat = concat.mean(1)
 
         return concat
+
+
+if __name__ == "__main__":
+	pass
