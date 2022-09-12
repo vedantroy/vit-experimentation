@@ -868,6 +868,7 @@ class MViT(nn.Module):
             norm_layer = partial(nn.LayerNorm, eps=1e-6)
         else:
             raise NotImplementedError("Only supports layernorm.")
+
         self.num_classes = num_classes
         self.patch_embed = stem_helper.PatchEmbed(
             dim_in=in_chans,
@@ -887,6 +888,7 @@ class MViT(nn.Module):
             for i in range(len(self.input_dims))
         ]
         num_patches = math.prod(self.patch_dims)
+        print(f"num_patches: {num_patches}, stride: {cfg.MVIT.PATCH_STRIDE}, patch_dims: {self.patch_dims}")
 
         dpr = [
             x.item() for x in torch.linspace(0, drop_path_rate, depth)
@@ -1197,6 +1199,7 @@ class MViT(nn.Module):
     def forward(self, x, bboxes=None, return_attn=False):
         x = x[0]
         x, bcthw = self.patch_embed(x)
+        print(f"After embed shape: {x.shape}")
         bcthw = list(bcthw)
         if len(bcthw) == 4:  # Fix bcthw in case of 4D tensor
             bcthw.insert(2, torch.tensor(self.T))

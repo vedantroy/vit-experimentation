@@ -219,6 +219,7 @@ class MultiScaleAttention(nn.Module):
         self.num_heads = num_heads
         self.dim_out = dim_out
         head_dim = dim_out // num_heads
+        print(f"head_dim: {head_dim}, {dim_out} // {num_heads}")
         self.scale = head_dim ** -0.5
         self.has_cls_embed = has_cls_embed
         self.mode = mode

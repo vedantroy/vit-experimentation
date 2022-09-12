@@ -306,6 +306,7 @@ class PatchEmbed(nn.Module):
             conv = nn.Conv2d
         else:
             conv = nn.Conv3d
+        print(f"conv2d: {kernel}, {stride}, {padding}")
         self.proj = conv(
             dim_in,
             dim_out,

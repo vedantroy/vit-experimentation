@@ -47,6 +47,7 @@ class ReversibleMViT(nn.Module):
         dpr = [
             x.item() for x in torch.linspace(0, drop_path_rate, depth)
         ]  # stochastic depth decay rule
+        print(f"stochastic depth: {dpr}")
 
         input_size = model.patch_dims
 
@@ -140,6 +141,7 @@ class ReversibleMViT(nn.Module):
         return torch.cat([a, h], dim=-1)
 
     def forward(self, x):
+        print(f"input dim: {x.shape}")
 
         # process the layers in a reversible stack and an irreversible stack.
         stack = []
@@ -151,6 +153,7 @@ class ReversibleMViT(nn.Module):
                     stack.append(("Reversible", []))
                 stack[-1][1].append(l_i)
 
+        print(f"layer stack: {len(stack)}, seq_len: {len(stack[0][1])}, seq_type: {type(stack[0][1])}")
         for layer_seq in stack:
 
             if layer_seq[0] == "StageTransition":
@@ -197,6 +200,7 @@ class RevBackProp(Function):
         cached in ctx for forward pass. This is not necessary for standard usecases.
         Each reversible layer implements its own forward pass logic.
         """
+        print(f"layers: {len(layers)}, buffer_layers: {len(buffer_layers)}")
         buffer_layers.sort()
 
         X_1, X_2 = torch.chunk(x, 2, dim=-1)
@@ -205,6 +209,7 @@ class RevBackProp(Function):
 
         for layer in layers:
 
+            print(f"LAYER SHAPES: {X_1.shape}, {X_2.shape}")
             X_1, X_2 = layer(X_1, X_2)
 
             if layer.layer_id in buffer_layers:
@@ -454,6 +459,7 @@ class ReversibleBlock(nn.Module):
         sub-block) and G (MLP sub-block) including layernorm.
         """
         super().__init__()
+        print(f"dim={dim}, dim_out={dim_out}, input_size={input_size}")
 
         self.drop_path_rate = drop_path
 
