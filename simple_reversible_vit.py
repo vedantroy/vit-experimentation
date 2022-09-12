@@ -86,6 +86,9 @@ class ReversibleBlock(nn.Module):
     ):
         super().__init__()
         self.drop_path_rate = drop_path_rate
+	# No residual connections on purpose:
+	# the paper says the two-stream architecture
+	# has builtin skip connections
         self.F = attention_block(
 	    # dim should be divisible by 2
             dim=dim // 2,
