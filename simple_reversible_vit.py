@@ -326,6 +326,8 @@ class ReversibleVIT(nn.Module):
 		)
 	)
 	# Initialization taken from PySlowFast
+	# REV_VIT config does not use ZERO_DECAY_POS_CLS
+	# meaning that positional embeddings are decayed
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
         self.blocks = nn.ModuleList([])
         for _ in range(depth):
