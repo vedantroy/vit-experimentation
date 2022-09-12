@@ -4,7 +4,7 @@ import yahp as hp
 import torch
 from torch import nn
 from torch.autograd import Function as Function
-from einops import rearrange
+from einops import rearrange, reduce
 from einops.layers.torch import Rearrange
 
 # A one-file implementation of the reversible VIT architecture
@@ -348,7 +348,7 @@ class ReversibleVIT(nn.Module):
         concat = RevBackProp.apply(concat, self.blocks)
 
         concat = self.norm(concat)
-        concat = concat.mean(1)
+        concat = reduce(concat, 'b patches dim -> b dim', reduction='mean')
 
         return concat
 
