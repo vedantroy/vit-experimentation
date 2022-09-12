@@ -1,14 +1,16 @@
+from types import SimpleNamespace
+
 import yahp as hp
 import torch
 from torch import nn
 from torch.autograd import Function as Function
 from einops import rearrange
+from einops.layers.torch import Rearrange
 
 # A one-file implementation of the reversible VIT architecture
 # Lacking:
 # - Stochastic Depth (for now)
 # - Dropout (never used)
-
 
 def norm(dim: int):
     return nn.LayerNorm(dim, eps=1e-6, elementwise_affine=True)
@@ -20,20 +22,16 @@ def mlp(in_features: int, hidden_features: int, out_features: int):
     # use dropout
     # (Possibly b/c they are using stochastic depth instead ...)
     return nn.Sequential(
-        [
             nn.Linear(in_features, hidden_features),
             nn.GELU(),
             nn.Linear(hidden_features, out_features),
-        ]
     )
 
 
 def mlp_block(dim: int, mlp_ratio: int):
     return nn.Sequential(
-        [
             norm(dim),
             mlp(in_features=dim, hidden_features=dim * mlp_ratio, out_features=dim),
-        ]
     )
 
 
@@ -74,7 +72,7 @@ class Attention(nn.Module):
 
 
 def attention_block(*, dim: int, heads: int):
-    return nn.Sequential([norm(dim), Attention(dim, heads)])
+    return nn.Sequential(norm(dim), Attention(dim, heads))
 
 
 class ReversibleBlock(nn.Module):
@@ -89,12 +87,13 @@ class ReversibleBlock(nn.Module):
         super().__init__()
         self.drop_path_rate = drop_path_rate
         self.F = attention_block(
-            dim=dim,
+	    # dim should be divisible by 2
+            dim=dim // 2,
             heads=heads,
         )
         self.G = mlp_block(
-            dim,
-            mlp_ratio,
+            dim=dim // 2,
+            mlp_ratio=mlp_ratio,
         )
         # self.seeds = {}
 
@@ -172,6 +171,9 @@ class ReversibleBlock(nn.Module):
         X_2 = Y_2 - G(Y_1), G = MLP
         X_1 = Y_1 - F(X_2), F = Attention
         """
+	# TODO: I don't fully understand
+	# why this works ... specific questions around
+	# how the gradients dX_1 and dX_2 are being calculated
 
         # temporarily record intermediate activation for G
         # and use them for gradient calculcation of G
@@ -247,11 +249,6 @@ class RevBackProp(Function):
 
     @staticmethod
     def backward(ctx, dx):
-        """
-        Reversible Backward pass. Any intermediate activations from `buffer_layers` are
-        recovered from ctx. Each layer implements its own loic for backward pass (both
-        activation recomputation and grad calculation).
-        """
         dX_1, dX_2 = torch.chunk(dx, 2, dim=-1)
         assert dX_1.shape == dX_2.shape
 
@@ -268,22 +265,31 @@ class RevBackProp(Function):
 
         dx = torch.cat([dX_1, dX_2], dim=-1)
 
-        del int_tensors
         del dX_1, dX_2, X_1, X_2
 
         return dx, None, None
+
+
+# def patch_embed()
+#         self.to_patch_embedding = nn.Sequential(
+#             Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+#             nn.Linear(patch_dim, dim),
+#         )
 
 
 def patch_embed(dim_out: int, patch_size: int, img_size: int):
     assert (
         img_size % patch_size == 0
     ), f"img_size: {img_size} not divisible by patch_size: {patch_size}"
-    return nn.Conv2d(
-        3,
-        dim_out,
-        kernel_size=(patch_size, patch_size),
-        stride=(patch_size, patch_size),
-        padding=(0, 0),
+    return nn.Sequential(
+        nn.Conv2d(
+            3,
+            dim_out,
+            kernel_size=(patch_size, patch_size),
+            stride=(patch_size, patch_size),
+            padding=(0, 0),
+        ),
+	Rearrange("b dim_out w_patched h_patched -> b (w_patched h_patched) dim_out")
     )
 
 
@@ -294,11 +300,16 @@ class ReversibleViTParams(hp.Hparams):
     patch_size: int = hp.required("width/height of patch")
 
 
-class ReversibleBackbone(nn.Module):
+class ReversibleVIT(nn.Module):
     def __init__(self, cfg, img_size: int):
         super().__init__()
 
-        depth, model_dim, heads = cfg.depth, cfg.model_dim, cfg.heads
+        depth, model_dim, heads, mlp_ratio = (
+            cfg.depth,
+            cfg.model_dim,
+            cfg.heads,
+            cfg.mlp_ratio,
+        )
         assert (
             model_dim % 2 == 0
         ), f"model_dim must be divisible by 2 for reversible ViT"
@@ -308,7 +319,7 @@ class ReversibleBackbone(nn.Module):
             block = ReversibleBlock(
                 dim=model_dim,
                 heads=heads,
-                mlp_ratio=cfg.mlp_ratio,
+                mlp_ratio=mlp_ratio,
                 drop_path_rate=None,
             )
             self.blocks.append(block)
@@ -327,4 +338,21 @@ class ReversibleBackbone(nn.Module):
 
 
 if __name__ == "__main__":
-    pass
+    cfg = SimpleNamespace(
+        **dict(
+            depth=6,
+            model_dim=768,
+            heads=8,
+            patch_size=16,
+	    mlp_ratio=4,
+        )
+    )
+
+    img_size = 16 * 14
+    model = ReversibleVIT(cfg, img_size=img_size)
+
+    x = torch.randn((1, 3, img_size, img_size))
+    y = model(x)
+    print("Forward finished")
+    y.sum().backward()
+    print("Backward finished")
