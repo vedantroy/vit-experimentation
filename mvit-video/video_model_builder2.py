@@ -1199,7 +1199,8 @@ class MViT(nn.Module):
     def forward(self, x, bboxes=None, return_attn=False):
         x = x[0]
         x, bcthw = self.patch_embed(x)
-        print(f"After embed shape: {x.shape}")
+        import numpy as np
+        print(f"After embed/flatten shape: {x.shape}, after projection shape: {bcthw}, embed_dim: {bcthw[1]}, num_patches: {np.prod(bcthw[2:])}")
         bcthw = list(bcthw)
         if len(bcthw) == 4:  # Fix bcthw in case of 4D tensor
             bcthw.insert(2, torch.tensor(self.T))
@@ -1246,8 +1247,10 @@ class MViT(nn.Module):
             x = self._forward_reversible(x)
 
         else:
+            print(f"Before transformer shape: {x.shape}")
             for blk in self.blocks:
                 x, thw = blk(x, thw)
+            print(f"After transformer shape: {x.shape}")
 
             if self.enable_detection:
                 assert not self.enable_rev
@@ -1273,6 +1276,7 @@ class MViT(nn.Module):
                 else:  # this is default, [norm->mean]
                     x = self.norm(x)
                     x = x.mean(1)
+                print(f"Before head dim: {x.shape}")
                 x = self.head(x)
 
         return x

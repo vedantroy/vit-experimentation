@@ -216,7 +216,8 @@ cfg = dict(
     SHORT_CYCLE_FACTORS=[0.5, 0.7071067811865476],
   ),
   MVIT=dict(
-    CLS_EMBED_ON=True,
+    # CLS_EMBED_ON=True,
+    CLS_EMBED_ON=False,
     DEPTH=24,
     DIM_MUL=[[2, 2.0], [5, 2.0], [21, 2.0]],
     DIM_MUL_IN_ATT=False,
