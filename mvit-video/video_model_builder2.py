@@ -1145,10 +1145,12 @@ class MViT(nn.Module):
     def _get_pos_embed(self, pos_embed, bcthw):
 
         if len(bcthw) == 4:
+            print("mangling 1")
             t, h, w = 1, bcthw[-2], bcthw[-1]
         else:
             t, h, w = bcthw[-3], bcthw[-2], bcthw[-1]
         if self.cls_embed_on:
+            print("mangling 2")
             cls_pos_embed = pos_embed[:, 0:1, :]
             pos_embed = pos_embed[:, 1:]
         txy_num = pos_embed.shape[1]
@@ -1156,6 +1158,7 @@ class MViT(nn.Module):
         assert p_t * p_h * p_w == txy_num
 
         if (p_t, p_h, p_w) != (t, h, w):
+            print("mangling 3")
             new_pos_embed = F.interpolate(
                 pos_embed[:, :, :]
                 .reshape(1, p_t, p_h, p_w, -1)
@@ -1166,6 +1169,7 @@ class MViT(nn.Module):
             pos_embed = new_pos_embed.reshape(1, -1, t * h * w).permute(0, 2, 1)
 
         if self.cls_embed_on:
+            print("mangling 4")
             pos_embed = torch.cat((cls_pos_embed, pos_embed), dim=1)
 
         return pos_embed
@@ -1222,13 +1226,20 @@ class MViT(nn.Module):
 
         if self.use_abs_pos:
             if self.sep_pos_embed:
+                print(f"pos embed spatial: {self.pos_embed_spatial.shape}")
                 pos_embed = self.pos_embed_spatial.repeat(
+		    # repeat positional embeddings along the time dimension
                     1, self.patch_dims[0], 1
-                ) + torch.repeat_interleave(
+                ) 
+                print(f"pos embed: {pos_embed.shape}")
+                print(f"pos embed temporal: {self.pos_embed_temporal.shape}")
+                temporal_embed = torch.repeat_interleave(
                     self.pos_embed_temporal,
                     self.patch_dims[1] * self.patch_dims[2],
                     dim=1,
                 )
+                print(f"temporal embed: {temporal_embed.shape}")
+                pos_embed += temporal_embed
                 if self.cls_embed_on:
                     pos_embed = torch.cat([self.pos_embed_class, pos_embed], 1)
                 x += self._get_pos_embed(pos_embed, bcthw)
